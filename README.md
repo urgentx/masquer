@@ -1,2 +1,2 @@
 # masquer
-Libgdx 2D game about avoiding people at a dance.
+Minimalistic Libgdx 2D Tower Defense style game.
