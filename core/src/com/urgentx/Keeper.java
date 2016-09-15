@@ -27,7 +27,6 @@ public class Keeper {
         this.label = label;
         hp = 100;
         attackDamage = 1;
-
     }
 
     public int getLevel() {
@@ -48,6 +47,10 @@ public class Keeper {
             xpToLevel += 200;
         }
         this.xp += xp;
+    }
+
+    public void update(){
+        attackDamage = level;
     }
 
     public void increaseY(float y){

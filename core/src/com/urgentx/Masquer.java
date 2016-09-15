@@ -9,6 +9,7 @@ import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.PolygonRegion;
 import com.badlogic.gdx.graphics.g2d.PolygonSprite;
@@ -49,7 +50,9 @@ public class Masquer extends ApplicationAdapter {
 
     private OrthographicCamera camera;
     private SpriteBatch batch;
-    private Texture dropImage, bucketImage, trainerImage, keeperImage, attackerImage, baseImage;
+    private Texture dropImage, bucketImage, trainerImage, keeperImage, attackerImage, baseImage, attackerSheet;
+    TextureRegion[] attackerAnimationFrames;
+    Animation animation;
 
     private Sound dropSound;
     private Music music;
@@ -68,6 +71,7 @@ public class Masquer extends ApplicationAdapter {
     private int baseHp = 500;
     private Label baseHpLabel;
     private boolean keepersDefending;
+    private int keeperSpawn; //increment with each tick()
 
     private ArrayList<Keeper> keepers; //could use LGX List
     private ArrayList<Attacker> attackers;
@@ -98,7 +102,21 @@ public class Masquer extends ApplicationAdapter {
         keeperImage = new Texture(Gdx.files.internal("keeper.png"));
         attackerImage = new Texture(Gdx.files.internal("attacker.png"));
         baseImage = new Texture(Gdx.files.internal("base.png"));
+        attackerSheet = new Texture(Gdx.files.internal("base.png"));
 
+        TextureRegion [] [] tmpFrames = TextureRegion.split(attackerSheet, 25, 25);
+
+        //initialize animation
+        attackerAnimationFrames = new TextureRegion[4];
+
+        int index = 0;
+        for(int i = 0 ; i < 2; i++){
+            for(int j = 0; j <2; j++){
+                attackerAnimationFrames[index++] = tmpFrames[j][i];
+            }
+        }
+
+        animation = new Animation(1f/4f, attackerAnimationFrames);
 
         //load sounds
         dropSound = Gdx.audio.newSound(Gdx.files.internal("drop.mp3"));
@@ -109,38 +127,6 @@ public class Masquer extends ApplicationAdapter {
         music.play();
 
 
-
-
-
-		/*//create camera
-        camera = new OrthographicCamera();
-		camera.setToOrtho(false, 800, 480);
-
-		batch = new SpriteBatch();
-
-		//build game objects
-		bucket = new Polygon(new float[]{0,0,64,0,64,64,0,64});
-		bucket.setOrigin(32,32);
-		bucket.setPosition(800/2 - 64/2,20);
-
-
-		trainer1 = new Trainer(600);
-		trainer2 = new Trainer(700);
-
-		keeper1 = new Keeper(0,0,1);
-		keeper2 = new Keeper(0,0,1);
-
-		Keeper keeper3 = new Keeper (300,200,1);
-
-		trainer1.setKeeper(keeper1);
-		trainer2.setKeeper(keeper2);
-
-		shapeRenderer = new ShapeRenderer();
-		shapeRenderer.setColor(Color.GREEN);
-
-		*/
-
-
         ////////////////////////////////////////////////////
 
         trainer1 = new Trainer(600);
@@ -148,6 +134,8 @@ public class Masquer extends ApplicationAdapter {
 
         keepers = new ArrayList<Keeper>();
         attackers = new ArrayList<Attacker>();
+
+        keeperSpawn = 0;
 
 
         stage = new Stage(new StretchViewport(800, 480)); //scene2d handles camera perspective
@@ -180,59 +168,8 @@ public class Masquer extends ApplicationAdapter {
        // keeper1 = new Keeper(0, 0, 1, keeperSourceImage1);
 
 
-        closestDistance = 500; //default distance to closest defender for attackers
+        closestDistance = 1000; //default distance to closest defender for attackers
 
-
-		/*DragAndDrop dragAndDrop = new DragAndDrop();
-		dragAndDrop.setDragActorPosition(-(sourceImage.getWidth()/2), sourceImage.getHeight()/2);
-		dragAndDrop.addSource(new DragAndDrop.Source(sourceImage) {
-			public DragAndDrop.Payload dragStart (InputEvent event, float x, float y, int pointer) {
-				DragAndDrop.Payload payload = new DragAndDrop.Payload();
-
-				sourceImage.setX(event.getStageX());
-				sourceImage.setY(event.getStageY());
-				payload.setObject(sourceImage);
-
-				payload.setDragActor(sourceImage);
-
-				Label validLabel = new Label("Some payload!", skin);
-				validLabel.setColor(0, 1, 0, 1);
-				payload.setValidDragActor(validLabel);
-
-				Label invalidLabel = new Label("Some payload!", skin);
-				invalidLabel.setColor(1, 0, 0, 1);
-				payload.setInvalidDragActor(invalidLabel);
-
-				return payload;
-			}
-		});
-		dragAndDrop.addTarget(new DragAndDrop.Target(validTargetImage) {
-			public boolean drag (DragAndDrop.Source source, DragAndDrop.Payload payload, float x, float y, int pointer) {
-				getActor().setColor(Color.GREEN);
-				return true;
-			}
-
-			public void reset (DragAndDrop.Source source, DragAndDrop.Payload payload) {
-				getActor().setColor(Color.WHITE);
-			}
-
-			public void drop (DragAndDrop.Source source, DragAndDrop.Payload payload, float x, float y, int pointer) {
-				System.out.println("Accepted: " + payload.getObject() + " " + x + ", " + y);
-			}
-		});
-		dragAndDrop.addTarget(new DragAndDrop.Target(invalidTargetImage) {
-			public boolean drag (DragAndDrop.Source source, DragAndDrop.Payload payload, float x, float y, int pointer) {
-				getActor().setColor(Color.RED);
-				return false;
-			}
-
-			public void reset (DragAndDrop.Source source, DragAndDrop.Payload payload) {
-				getActor().setColor(Color.WHITE);
-			}
-
-			public void drop (DragAndDrop.Source source, DragAndDrop.Payload payload, float x, float y, int pointer) {
-			}
-		});*/
 
         timer = new Timer();
 
@@ -254,6 +191,7 @@ public class Masquer extends ApplicationAdapter {
         while(keeperIterator.hasNext()) {       //iterate through all Keepers
             Keeper keeper = keeperIterator.next();
 
+            keeper.update();
             keeper.getSourceImage().setX(keeper.getX());    //update Actor location
             keeper.getSourceImage().setY(keeper.getY());
 
@@ -274,9 +212,9 @@ public class Masquer extends ApplicationAdapter {
             }
         }
 
+
         Iterator<Attacker>  attackerIterator = attackers.iterator();
         while(attackerIterator.hasNext()){      //iterate through all Attackers
-
 
             Attacker attacker = attackerIterator.next();
 
@@ -284,49 +222,54 @@ public class Masquer extends ApplicationAdapter {
             attacker.getSourceImage().setX(attacker.getX());        //update Actor location
             attacker.getSourceImage().setY(attacker.getY());
 
+
+
             if(attacker.getHp() <= 0){      //check for death
                 attackerIterator.remove();
                 attacker.getSourceImage().remove();
                 attacker = null;
             } else {
-
                 if (keepersDefending) {
+                    if (! keepers.isEmpty()) {       //check for collisions
 
-                    if (!keepers.isEmpty()) {       //check for collisions
+                        Keeper closest = null;
+                        closestDistance = 10000000; //reset so that all keepers are considered once more
 
-                        float attackerX = attacker.getX(); //move these to global variables
-                        float attackerY = attacker.getY();
-                        float keeperX;
-                        float keeperY;
-                        float xd, yd;  //x distance, y distance from keeper
-                        float distance;
-                        Keeper closest = keepers.get(0);
+                        for (Keeper keeper : keepers) {   //traverse keepers
 
-                        for (Keeper keeper : keepers) {     //traverse keepers
-                            keeperX = keeper.getX();
-                            keeperY = keeper.getY();
-                            xd = keeperX - attackerX; //X distance from keeper to attacker
-                            yd = keeperY - attackerY; //Y distance from keeper to attacker
-                            distance = (float) Math.sqrt(xd * xd + yd * yd);
+                            float keeperX = keeper.getX();
+                            float keeperY = keeper.getY();
+
+                            float xd = Math.abs(keeperX - attacker.getX()); //X distance from keeper to attacker
+                            float yd = Math.abs(keeperY - attacker.getY()); //Y distance from keeper to attacker
+                            float distance = (float) Math.sqrt(xd * xd + yd * yd);
+                            Gdx.app.log("mytag1", "distance = " + distance + "keeperX = " + keeper.getX());
                             if (distance < closestDistance) {
                                 closest = keeper;
+                                closestDistance = distance;
                             }
                         }
 
-                        //move attacker toward keeper
-                        float xSpeed = (closest.getX() - attackerX) / 500;
-                        float ySpeed = (closest.getY() - attackerY) / 500;
-                        float factor = 0.3f / (float) Math.sqrt(xSpeed * xSpeed + ySpeed * ySpeed);
+                        if(closest != null) {
 
-                        attacker.setSpeedX(xSpeed * factor);
-                        attacker.setSpeedY(ySpeed * factor);
+                            //Gdx.app.log("mytag1", " --" + closest.getX());
+                            //move attacker toward keeper
+                            float xSpeed = (closest.getX() - attacker.getX()) / 500;
+                            float ySpeed = (closest.getY() - attacker.getY()) / 500;
+                            float factor = 0.3f / (float) Math.sqrt(xSpeed * xSpeed + ySpeed * ySpeed);
 
-                        //check for collision, deal damage
-                        if (Math.abs(attackerX - closest.getX()) < 10 && Math.abs(attackerY - closest.getY()) < 10) {
-                            closest.damage(attacker.getAttackDamage());
-                            attacker.damage(closest.getAttackDamage());
-                            Gdx.app.log("mytag", "hp :" + closest.getHp());
+                            attacker.setSpeedX(xSpeed * factor);
+                            attacker.setSpeedY(ySpeed * factor);
+
+                            //check for collision, deal damage
+                            if (Math.abs(attacker.getX() - closest.getX()) < 10 && Math.abs(attacker.getY() - closest.getY()) < 10) {
+                                closest.damage(attacker.getAttackDamage());
+                                attacker.damage(closest.getAttackDamage());
+
+                            }
                         }
+
+
                     }
                 } else {        //else move attacker toward base
 
@@ -340,7 +283,7 @@ public class Masquer extends ApplicationAdapter {
                     float xSpeed = (525 - attacker.getX()) / 500;
                     float ySpeed = (200 - attacker.getY()) / 500;
 
-                    Gdx.app.log("mytag", "reached :" + keepersDefending);
+
                     attacker.setSpeedX(xSpeed);
                     attacker.setSpeedY(ySpeed);
 
@@ -350,6 +293,7 @@ public class Masquer extends ApplicationAdapter {
 
                 }
             }
+
         }
 
 
@@ -357,10 +301,6 @@ public class Masquer extends ApplicationAdapter {
         trainer2.update();
 
         baseHpLabel.setText("Base HP: " + baseHp);
-
-
-
-
 
        // if (TimeUtils.nanoTime() - lastTick > 1000000000 * 100) tick();
 
@@ -387,9 +327,13 @@ public class Masquer extends ApplicationAdapter {
     }
 
     public void tick() {
-        spawnKeeper();
+        Gdx.app.log("mytag", "ks: " + keeperSpawn);
+        if(keeperSpawn % 3 == 0 && keepers.size() < 3) {
+            spawnKeeper();
+        }
         spawnAttacker();
         lastTick = TimeUtils.nanoTime();
+        keeperSpawn++;
 
     }
 

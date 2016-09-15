@@ -33,7 +33,6 @@ public class Trainer {
 
     public void tick(){
         if(hasKeeper){
-            Gdx.app.log("mytag", " lvl: " + keeper.getLevel());
             keeper.giveXp(1);
             keeper.increaseY(1);
             if(keeper.getY() > 400){
@@ -67,7 +66,6 @@ public class Trainer {
 
     public void clearKeeper(){
         if(!keepers.isEmpty()) {
-            Gdx.app.log("mytag1", "keeper x: " + keeper.getX());
             keeper.setX(500);
             keepers.pop();
             keeper = null;

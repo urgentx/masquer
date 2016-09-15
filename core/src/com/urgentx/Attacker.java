@@ -24,7 +24,7 @@ public class Attacker {
         speedX = 0.3;
         speedY = 0;
         attackDamage = 1;
-        hp = 80;
+        hp = 50;
     }
 
     public int getLevel() {
